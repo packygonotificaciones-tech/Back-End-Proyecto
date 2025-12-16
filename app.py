@@ -27,6 +27,15 @@ password = os.getenv("PASSWORD")
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
+
+@app.after_request
+def add_cors_headers(response):
+    response.headers.setdefault("Access-Control-Allow-Origin", "*")
+    response.headers.setdefault("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
+    response.headers.setdefault("Access-Control-Allow-Headers", "Content-Type,Authorization")
+    response.headers.setdefault("Access-Control-Allow-Credentials", "true")
+    return response
+
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "uploads")
 IMAGES_FOLDER = os.path.join(UPLOAD_FOLDER, "images")
 PROFILE_FOLDER = os.path.join(IMAGES_FOLDER, "profiles")
