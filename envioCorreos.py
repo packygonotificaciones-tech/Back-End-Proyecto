@@ -2,6 +2,7 @@ import os
 from email.message import EmailMessage
 import ssl
 import smtplib
+import threading
 from dotenv import load_dotenv
 from datetime import datetime
 
@@ -44,51 +45,51 @@ def _build_html_template(title: str, subtitle: str, body_html: str, primary_colo
 
 
 def _send_email(to_email: str, subject: str, plain_text: str, html: str):
-    try:
-        if not password:
-            if DEV_MODE:
-                print(f"🔧 MODO DESARROLLO - Simulando envío de correo a {to_email}:")
-                print(f"   📧 Asunto: {subject}")
-                print(f"   📝 Contenido: {plain_text}")
-                print(f"   ✅ Correo 'enviado' exitosamente (modo desarrollo)")
-                return True
-            raise ValueError("PASSWORD no está configurado en las variables de entorno")
-        
-        em = EmailMessage()
-        em["From"] = email_sender
-        em["To"] = to_email
-        em["Subject"] = subject
-        em.set_content(plain_text)
-        em.add_alternative(html, subtype="html")
+  # Si no hay password y estamos en modo desarrollo, simular envío
+  if not password:
+    if DEV_MODE:
+      print(f"🔧 MODO DESARROLLO - Simulando envío de correo a {to_email}:")
+      print(f"   📧 Asunto: {subject}")
+      print(f"   📝 Contenido: {plain_text}")
+      print(f"   ✅ Correo 'enviado' exitosamente (modo desarrollo)")
+      return True
+    raise ValueError("PASSWORD no está configurado en las variables de entorno")
 
-        context = ssl.create_default_context()
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context) as smtp:
-            smtp.login(email_sender, password)
-            smtp.send_message(em)
-        print(f"✅ Correo '{subject}' enviado exitosamente a {to_email}")
-        return True
+  def _send_sync():
+    try:
+      em = EmailMessage()
+      em["From"] = email_sender
+      em["To"] = to_email
+      em["Subject"] = subject
+      em.set_content(plain_text)
+      em.add_alternative(html, subtype="html")
+
+      context = ssl.create_default_context()
+      # Añadir timeout para evitar bloqueos prolongados
+      with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context, timeout=15) as smtp:
+        smtp.login(email_sender, password)
+        smtp.send_message(em)
+      print(f"✅ Correo '{subject}' enviado exitosamente a {to_email}")
     except smtplib.SMTPAuthenticationError as e:
-        print(f"❌ Error de autenticación Gmail para {to_email}:")
-        print(f"   - Verifica que la cuenta {email_sender} tenga 2FA habilitado")
-        print(f"   - Genera una nueva contraseña de aplicación en: https://myaccount.google.com/apppasswords")
-        print(f"   - Actualiza la variable PASSWORD en el archivo .env")
-        print(f"   - Error técnico: {e}")
-        
-        # En modo desarrollo, mostrar el código de todas formas
-        if DEV_MODE:
-            print(f"🔧 MODO DESARROLLO - Código disponible en consola:")
-            print(f"   📝 {plain_text}")
-            return True
-        return False
+      print(f"❌ Error de autenticación Gmail para {to_email}:")
+      print(f"   - Verifica que la cuenta {email_sender} tenga 2FA habilitado")
+      print(f"   - Genera una nueva contraseña de aplicación en: https://myaccount.google.com/apppasswords")
+      print(f"   - Actualiza la variable PASSWORD en el archivo .env")
+      print(f"   - Error técnico: {e}")
+      if DEV_MODE:
+        print(f"🔧 MODO DESARROLLO - Código disponible en consola:")
+        print(f"   📝 {plain_text}")
     except Exception as e:
-        print(f"❌ Error al enviar correo '{subject}' a {to_email}: {e}")
-        
-        # En modo desarrollo, mostrar el código de todas formas
-        if DEV_MODE:
-            print(f"🔧 MODO DESARROLLO - Código disponible en consola:")
-            print(f"   📝 {plain_text}")
-            return True
-        return False
+      print(f"❌ Error al enviar correo '{subject}' a {to_email}: {e}")
+      if DEV_MODE:
+        print(f"🔧 MODO DESARROLLO - Código disponible en consola:")
+        print(f"   📝 {plain_text}")
+
+  # Ejecutar envío en un hilo separado para no bloquear la petición HTTP
+  thread = threading.Thread(target=_send_sync, daemon=True)
+  thread.start()
+  print(f"🔧 Correo encolado para envío a {to_email}")
+  return True
 
 
 def enviarCorreo(correo, codigoVerificacion):
