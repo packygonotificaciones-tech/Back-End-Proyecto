@@ -3,7 +3,6 @@ from email.message import EmailMessage
 import ssl
 import smtplib
 import threading
-import traceback
 from dotenv import load_dotenv
 from datetime import datetime
 
@@ -45,7 +44,7 @@ def _build_html_template(title: str, subtitle: str, body_html: str, primary_colo
         return html
 
 
-def _send_email(to_email: str, subject: str, plain_text: str, html: str):
+def _send_email(to_email: str, subject: str, plain_text: str, html: str, async_send: bool = True):
   # Si no hay password y estamos en modo desarrollo, simular envío
   if not password:
     if DEV_MODE:
@@ -54,9 +53,7 @@ def _send_email(to_email: str, subject: str, plain_text: str, html: str):
       print(f"   📝 Contenido: {plain_text}")
       print(f"   ✅ Correo 'enviado' exitosamente (modo desarrollo)")
       return True
-    # Evitar levantar excepción que pueda interrumpir la petición HTTP.
-    print(f"❌ PASSWORD no está configurado en las variables de entorno. No se enviará correo a {to_email}.")
-    return False
+    raise ValueError("PASSWORD no está configurado en las variables de entorno")
 
   def _send_sync():
     try:
@@ -73,6 +70,7 @@ def _send_email(to_email: str, subject: str, plain_text: str, html: str):
         smtp.login(email_sender, password)
         smtp.send_message(em)
       print(f"✅ Correo '{subject}' enviado exitosamente a {to_email}")
+      return True
     except smtplib.SMTPAuthenticationError as e:
       print(f"❌ Error de autenticación Gmail para {to_email}:")
       print(f"   - Verifica que la cuenta {email_sender} tenga 2FA habilitado")
@@ -82,13 +80,18 @@ def _send_email(to_email: str, subject: str, plain_text: str, html: str):
       if DEV_MODE:
         print(f"🔧 MODO DESARROLLO - Código disponible en consola:")
         print(f"   📝 {plain_text}")
-      traceback.print_exc()
+      return False
     except Exception as e:
       print(f"❌ Error al enviar correo '{subject}' a {to_email}: {e}")
-      traceback.print_exc()
       if DEV_MODE:
         print(f"🔧 MODO DESARROLLO - Código disponible en consola:")
         print(f"   📝 {plain_text}")
+      return False
+
+  # Si se solicita envío síncrono, ejecutar y devolver el resultado
+  if not async_send:
+    print(f"🔧 Envío síncrono solicitado para {to_email}")
+    return _send_sync()
 
   # Ejecutar envío en un hilo separado para no bloquear la petición HTTP
   thread = threading.Thread(target=_send_sync, daemon=True)

@@ -117,7 +117,7 @@ def request_reset():
         return {"error": "No existe usuario con ese correo"}, 404
     codigo = str(random.randint(100000, 999999))
     reset_codes[correo] = codigo
-    email_sent = enviarCorreo(correo, codigo)
+    email_sent = enviarCorreo(correo, codigo, async_send=False)
     
     if email_sent:
         return {"message": "Código de recuperación enviado al correo."}, 200
@@ -331,7 +331,7 @@ def resend_code():
             codigo = str(random.randint(100000, 999999))
             verification_codes[correo]["code"] = codigo
             print(f"🔧 Nuevo código de registro generado: {codigo}")
-            email_sent = enviarCorreo(correo, codigo)
+            email_sent = enviarCorreo(correo, codigo, async_send=False)
             if email_sent:
                 return {"message": "Código reenviado correctamente"}, 200
             else:
@@ -350,7 +350,7 @@ def resend_code():
             codigo = str(random.randint(100000, 999999))
             verification_codes[correo]["code"] = codigo
             print(f"🔧 Nuevo código de login generado: {codigo}")
-            email_sent = enviarCorreo(correo, codigo)
+            email_sent = enviarCorreo(correo, codigo, async_send=False)
             if email_sent:
                 return {"message": "Código reenviado correctamente"}, 200
             else:
@@ -369,7 +369,7 @@ def resend_code():
             codigo = str(random.randint(100000, 999999))
             reset_codes[correo] = codigo
             print(f"🔧 Nuevo código de reset generado: {codigo}")
-            email_sent = enviarCorreo(correo, codigo)
+            email_sent = enviarCorreo(correo, codigo, async_send=False)
             if email_sent:
                 return {"message": "Código reenviado correctamente"}, 200
             else:
