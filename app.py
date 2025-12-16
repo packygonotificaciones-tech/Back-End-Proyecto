@@ -27,7 +27,6 @@ password = os.getenv("PASSWORD")
 app = Flask(__name__)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-
 @app.after_request
 def add_cors_headers(response):
     response.headers.setdefault("Access-Control-Allow-Origin", "*")
