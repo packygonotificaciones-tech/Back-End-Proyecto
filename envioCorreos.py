@@ -3,6 +3,7 @@ from email.message import EmailMessage
 import ssl
 import smtplib
 import threading
+import traceback
 from dotenv import load_dotenv
 from datetime import datetime
 
@@ -53,7 +54,9 @@ def _send_email(to_email: str, subject: str, plain_text: str, html: str):
       print(f"   📝 Contenido: {plain_text}")
       print(f"   ✅ Correo 'enviado' exitosamente (modo desarrollo)")
       return True
-    raise ValueError("PASSWORD no está configurado en las variables de entorno")
+    # Evitar levantar excepción que pueda interrumpir la petición HTTP.
+    print(f"❌ PASSWORD no está configurado en las variables de entorno. No se enviará correo a {to_email}.")
+    return False
 
   def _send_sync():
     try:
@@ -79,8 +82,10 @@ def _send_email(to_email: str, subject: str, plain_text: str, html: str):
       if DEV_MODE:
         print(f"🔧 MODO DESARROLLO - Código disponible en consola:")
         print(f"   📝 {plain_text}")
+      traceback.print_exc()
     except Exception as e:
       print(f"❌ Error al enviar correo '{subject}' a {to_email}: {e}")
+      traceback.print_exc()
       if DEV_MODE:
         print(f"🔧 MODO DESARROLLO - Código disponible en consola:")
         print(f"   📝 {plain_text}")
