@@ -145,7 +145,7 @@ def reset_password():
         cursor.execute("UPDATE usuario SET contrasena=%s WHERE correo=%s", (hashed_password, correo))
         conn.commit()
         reset_codes.pop(correo)
-        enviarCorreoCambio(correo)
+        enviarCorreoCambio(correo, async_send=False)
         user = get_user_by_correo(correo)
         if user:
             return (user, 200)
@@ -204,7 +204,7 @@ def register():
             "rol": rol
         }
     }
-    enviarCorreo(correo, codigo)
+    enviarCorreo(correo, codigo, async_send=False)
     return {"message": "Código enviado. Verifica tu correo.", "correo": correo}, 200
 
 @app.route("/api/login", methods=["POST"])
@@ -237,7 +237,7 @@ def login():
                 "rol": user[10] 
             }
         }
-        enviarCorreo(correo, codigo)
+        enviarCorreo(correo, codigo, async_send=False)
         return {"message": "Código enviado. Verifica tu correo.", "correo": correo}, 200
     else:
         return {"error": "Credenciales inválidas"}, 401
@@ -383,7 +383,7 @@ def resend_code():
             codigo = str(random.randint(100000, 999999))
             reset_codes[correo] = codigo
             print(f"🔧 Nuevo código de reset creado: {codigo}")
-            email_sent = enviarCorreo(correo, codigo)
+            email_sent = enviarCorreo(correo, codigo, async_send=False)
             if email_sent:
                 return {"message": "Código reenviado correctamente"}, 200
             else:
@@ -511,7 +511,7 @@ def cambiar_contrasena_usuario(usuario_id):
         cursor.execute("SELECT correo FROM usuario WHERE id=%s", (usuario_id,))
         correo_user = cursor.fetchone()
         if correo_user:
-            enviarCorreoCambio(correo_user[0])
+            enviarCorreoCambio(correo_user[0], async_send=False)
         
         return {"message": "Contraseña actualizada exitosamente"}, 200
     except Exception as e:
@@ -997,7 +997,7 @@ def debug_reserva():
                 f"Dirección de destino: {direccion_destino}\n\n"
                 "Por favor, revisa tu panel para más detalles."
             )
-            enviarCorreoReserva(conductor[2], mensaje_conductor)
+            enviarCorreoReserva(conductor[2], mensaje_conductor, async_send=False)
 
             mensaje_cliente = (
                 f"Hola {cliente[0]},\n\n"
@@ -1008,7 +1008,7 @@ def debug_reserva():
                 f"El conductor es: {conductor[0]}, correo: {conductor[2]}.\n"
                 "¡Gracias por usar PackyGo!"
             )
-            enviarCorreoReserva(cliente[2], mensaje_cliente)
+            enviarCorreoReserva(cliente[2], mensaje_cliente, async_send=False)
         return {"message": "Reserva realizada y correos enviados (debug)."}, 201
     except Exception as e:
         conn.rollback()
@@ -1175,12 +1175,12 @@ def cancelar_reserva(reserva_id):
             mensaje_cliente = (
                 f"Tu reserva del {fecha_inicio} al {fecha_fin} ha sido cancelada."
             )
-            enviarCorreoCancelacion(cliente[1], cliente[0], mensaje_cliente, es_cliente=True)
+            enviarCorreoCancelacion(cliente[1], cliente[0], mensaje_cliente, es_cliente=True, async_send=False)
         if conductor:
             mensaje_conductor = (
                 f"Una reserva de tu vehículo del {fecha_inicio} al {fecha_fin} ha sido cancelada."
             )
-            enviarCorreoCancelacion(conductor[1], conductor[0], mensaje_conductor, es_cliente=False)
+            enviarCorreoCancelacion(conductor[1], conductor[0], mensaje_conductor, es_cliente=False, async_send=False)
 
         return {"message": "Reserva cancelada correctamente."}, 200
     except Exception as e:

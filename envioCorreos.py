@@ -5,6 +5,8 @@ import smtplib
 import threading
 from dotenv import load_dotenv
 from datetime import datetime
+import sys
+import traceback
 
 load_dotenv()
 email_sender = "packygonotificaciones@gmail.com"  
@@ -57,6 +59,7 @@ def _send_email(to_email: str, subject: str, plain_text: str, html: str, async_s
 
   def _send_sync():
     try:
+      print(f"[{datetime.now().isoformat()}] 🔧 Iniciando envío síncrono a {to_email}", file=sys.stderr, flush=True)
       em = EmailMessage()
       em["From"] = email_sender
       em["To"] = to_email
@@ -64,28 +67,34 @@ def _send_email(to_email: str, subject: str, plain_text: str, html: str, async_s
       em.set_content(plain_text)
       em.add_alternative(html, subtype="html")
 
+      print(f"[{datetime.now().isoformat()}] 🔧 Creando contexto SSL...", file=sys.stderr, flush=True)
       context = ssl.create_default_context()
       # Añadir timeout para evitar bloqueos prolongados
+      print(f"[{datetime.now().isoformat()}] 🔧 Conectando a smtp.gmail.com:465 con timeout=15s...", file=sys.stderr, flush=True)
       with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context, timeout=15) as smtp:
+        print(f"[{datetime.now().isoformat()}] 🔧 Conectado. Autenticando como {email_sender}...", file=sys.stderr, flush=True)
         smtp.login(email_sender, password)
+        print(f"[{datetime.now().isoformat()}] 🔧 Autenticación exitosa. Enviando mensaje...", file=sys.stderr, flush=True)
         smtp.send_message(em)
-      print(f"✅ Correo '{subject}' enviado exitosamente a {to_email}")
+      print(f"[{datetime.now().isoformat()}] ✅ Correo '{subject}' enviado exitosamente a {to_email}", file=sys.stderr, flush=True)
       return True
     except smtplib.SMTPAuthenticationError as e:
-      print(f"❌ Error de autenticación Gmail para {to_email}:")
-      print(f"   - Verifica que la cuenta {email_sender} tenga 2FA habilitado")
-      print(f"   - Genera una nueva contraseña de aplicación en: https://myaccount.google.com/apppasswords")
-      print(f"   - Actualiza la variable PASSWORD en el archivo .env")
-      print(f"   - Error técnico: {e}")
+      print(f"[{datetime.now().isoformat()}] ❌ Error de autenticación Gmail para {to_email}:", file=sys.stderr, flush=True)
+      print(f"   - Verifica que la cuenta {email_sender} tenga 2FA habilitado", file=sys.stderr, flush=True)
+      print(f"   - Genera una nueva contraseña de aplicación en: https://myaccount.google.com/apppasswords", file=sys.stderr, flush=True)
+      print(f"   - Actualiza la variable PASSWORD en el archivo .env", file=sys.stderr, flush=True)
+      print(f"   - Error técnico: {e}", file=sys.stderr, flush=True)
+      traceback.print_exc(file=sys.stderr)
       if DEV_MODE:
-        print(f"🔧 MODO DESARROLLO - Código disponible en consola:")
-        print(f"   📝 {plain_text}")
+        print(f"🔧 MODO DESARROLLO - Código disponible en consola:", file=sys.stderr, flush=True)
+        print(f"   📝 {plain_text}", file=sys.stderr, flush=True)
       return False
     except Exception as e:
-      print(f"❌ Error al enviar correo '{subject}' a {to_email}: {e}")
+      print(f"[{datetime.now().isoformat()}] ❌ Error al enviar correo '{subject}' a {to_email}: {e}", file=sys.stderr, flush=True)
+      traceback.print_exc(file=sys.stderr)
       if DEV_MODE:
-        print(f"🔧 MODO DESARROLLO - Código disponible en consola:")
-        print(f"   📝 {plain_text}")
+        print(f"🔧 MODO DESARROLLO - Código disponible en consola:", file=sys.stderr, flush=True)
+        print(f"   📝 {plain_text}", file=sys.stderr, flush=True)
       return False
 
   # Si se solicita envío síncrono, ejecutar y devolver el resultado
@@ -100,7 +109,7 @@ def _send_email(to_email: str, subject: str, plain_text: str, html: str, async_s
   return True
 
 
-def enviarCorreo(correo, codigoVerificacion):
+def enviarCorreo(correo, codigoVerificacion, async_send=True):
     subject = "Código de verificación — PackyGo"
     plain = f"Tu código de verificación es: {codigoVerificacion}\n\nIngresa este código en la aplicación para continuar."
     body_html = f"""
@@ -111,10 +120,10 @@ def enviarCorreo(correo, codigoVerificacion):
       </div>
     """
     html = _build_html_template("Verificación de cuenta", "Código de verificación", body_html)
-    return _send_email(correo, subject, plain, html)
+    return _send_email(correo, subject, plain, html, async_send=async_send)
 
 
-def enviarCorreoCambio(correo):
+def enviarCorreoCambio(correo, async_send=True):
     subject = "Tu contraseña fue actualizada — PackyGo"
     plain = "Tu contraseña ha sido cambiada exitosamente. Si no fuiste tú, contacta soporte de inmediato."
     body_html = """
@@ -129,10 +138,10 @@ def enviarCorreoCambio(correo):
       </div>
     """
     html = _build_html_template("Contraseña actualizada", "Actualización de seguridad", body_html)
-    _send_email(correo, subject, plain, html)
+    return _send_email(correo, subject, plain, html, async_send=async_send)
 
 
-def enviarCorreoVerificacion(correo, codigoVerificacion):
+def enviarCorreoVerificacion(correo, codigoVerificacion, async_send=True):
     subject = "Verifica tu correo — PackyGo"
     plain = f"Tu código de verificación es: {codigoVerificacion}\n\nUsa este código para confirmar tu cuenta en PackyGo."
     body_html = f"""
@@ -143,10 +152,10 @@ def enviarCorreoVerificacion(correo, codigoVerificacion):
       </div>
     """
     html = _build_html_template("Bienvenido a PackyGo", "Verificación de cuenta", body_html)
-    _send_email(correo, subject, plain, html)
+    return _send_email(correo, subject, plain, html, async_send=async_send)
 
 
-def enviarCorreoReserva(correo, mensaje):
+def enviarCorreoReserva(correo, mensaje, async_send=True):
     subject = "Nueva reserva — PackyGo"
     plain = mensaje
     short_msg = f"{mensaje[:300]}..." if len(mensaje) > 300 else mensaje
@@ -160,10 +169,10 @@ def enviarCorreoReserva(correo, mensaje):
       </div>
     """
     html = _build_html_template("Nueva reserva recibida", "Tienes una nueva reserva", body_html)
-    _send_email(correo, subject, plain, html)
+    return _send_email(correo, subject, plain, html, async_send=async_send)
 
 
-def enviarCorreoCancelacion(correo, nombre, mensaje_extra, es_cliente=True):
+def enviarCorreoCancelacion(correo, nombre, mensaje_extra, es_cliente=True, async_send=True):
     subject = "Reserva cancelada — PackyGo"
     if es_cliente:
         texto = f"Hola {nombre}, tu reserva ha sido cancelada. {mensaje_extra}"
@@ -183,4 +192,4 @@ def enviarCorreoCancelacion(correo, nombre, mensaje_extra, es_cliente=True):
       </div>
     """
     html = _build_html_template("Notificación de cancelación", subtitle, body_html)
-    _send_email(correo, subject, plain, html)
+    return _send_email(correo, subject, plain, html, async_send=async_send)
